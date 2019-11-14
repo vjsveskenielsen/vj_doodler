@@ -51,7 +51,10 @@ Textfield field_cw, field_ch, field_syphon_name, field_osc_port, field_osc_addre
 Button button_ip;
 ScrollableList dropdown_midi, dropdown_syphon_client;
 Toggle toggle_log_osc, toggle_log_midi, toggle_view_bg;
-Viewport view;
+Knob knob_brush_size;
+Bang bang_clear;
+float brush_size;
+Viewport vp;
 boolean viewport_show_alpha = false;
 boolean log_midi = true, log_osc = true;
 
@@ -71,22 +74,22 @@ PVector brush = new PVector(-1, -1);
 PVector pbrush = brush;
 
 public void settings() {
-  size(500, 500, P3D);
+  size(720, 840, P3D);
 }
 
 public void setup() {
   log = new Log();
 
   midi_devices = midi.availableInputs();
-  controlSetup();
-  updateOSC(port);
 
   c = createGraphics(cw, ch, P3D);
   c_input = createGraphics(c.width,c.height,P3D);
-  view = new Viewport(c, 400, 50, 50);
+  vp = new Viewport(c, 700, 10, 65);
   syphonserver = new SyphonServer(this, syphon_name);
-  view.resize(c);
+  vp.resize(c);
   frameRate(60);
+  controlSetup();
+  updateOSC(port);
 }
 
 public void draw() {
@@ -97,65 +100,64 @@ public void draw() {
   fill(cp5.getTab("output/syphon").getColor().getBackground());
   rect(0, 0, width, cp5.getTab("output/syphon").getHeight());
 
-
   drawGraphics();
-  view.display(c);
+  vp.display(c);
   syphonserver.sendImage(c);
   log.update();
 }
 
 public void drawGraphics() {
   c.beginDraw();
-/*
+  //c.fill(0, 10);
+  //c.noStroke();
+  //c.rect(0, 0, c.width, c.height);
+  /*
   c.loadPixels();
   for (int i = 0; i < c.pixels.length; i++) {
-    // The functions red(), green(), and blue() pull out the 3 color components from a pixel.
-    float r = red(c.pixels[i]);
-    float g = green(c.pixels[i]);
-    float b = blue(c.pixels[i]);
-    if (r > 0) {
-      r = constrain(r-10, 0, 255);
-      g = constrain(g-10, 0, 255);
-      b = constrain(b-10, 0, 255);
-      c.pixels[i] = color(r,g,b);
-    }
-    else c.pixels[i] = color(0,0,0);
-  }
-
-  c.updatePixels();
-*/
-  //c.fill(255, 0,0, 255);
-  c.stroke(255);
-  c.strokeWeight(60);
-  if (mousePressed) {
-    brush = mapMouseToCanvas(mouseX, mouseY, c);
-    if (brush.x + brush.y != -2) {
-      c.circle(brush.x, brush.y, 30);
-
-      if (pbrush.x + pbrush.y != -2) c.line(pbrush.x, pbrush.y, brush.x, brush.y);
-      pbrush = brush;
-    }
-  }
-  c.endDraw();
+  // The functions red(), green(), and blue() pull out the 3 color components from a pixel.
+  float r = red(c.pixels[i]);
+  float g = green(c.pixels[i]);
+  float b = blue(c.pixels[i]);
+  if (r > 0) {
+  r = constrain(r-10, 0, 255);
+  g = constrain(g-10, 0, 255);
+  b = constrain(b-10, 0, 255);
+  c.pixels[i] = color(r,g,b);
 }
+else c.pixels[i] = color(0,0,0);
+c.updatePixels();
+*/
 
-public PVector mapMouseToCanvas(int x_in, int y_in, PGraphics pg) {
-  int x_min = view.display_off_x+view.view_off_w;
-  int x_max = x_min+view.view_w;
-  int y_min = view.display_off_y+view.view_off_h;
-  int y_max = y_min+view.view_h;
-  PVector out = new PVector(-1, -1);
-  if (mouseX >= x_min && mouseX <= x_max &&
-    mouseY >= y_min && mouseY <= y_max) {
-      float x = map(mouseX, x_min, x_max, 0.0f, c.width);
-      float y = map(mouseY, y_min, y_max, 0.0f, c.height);
-      out = new PVector(x,y);
+if (mousePressed) {
+  brush = mapMouseToCanvas(mouseX, mouseY, c);
+  pbrush = mapMouseToCanvas(pmouseX, pmouseY, c);
+  if (brush.x + brush.y != -2) {
+    c.noStroke();
+    c.circle(brush.x, brush.y, brush_size);
+    if (pbrush.x + pbrush.y != -2) {
+      c.strokeWeight(brush_size);
+      c.stroke(255);
+      c.line(pbrush.x, pbrush.y, brush.x, brush.y);
     }
-    return out;
   }
-
-public void mouseReleased() {
-  pbrush = new PVector(-1, -1);
+}
+c.endDraw();
+pbrush = new PVector(-1, -1);
+}
+/*remaps a cursor input so that what you draw inside the canvas, is scaled
+correctly to the PGraphics canvas */
+public PVector mapMouseToCanvas(int x_in, int y_in, PGraphics pg) {
+  int x_min = vp.viewport_off_x+vp.view_off_w;
+  int x_max = x_min+vp.view_w;
+  int y_min = vp.viewport_off_y+vp.view_off_h;
+  int y_max = y_min+vp.view_h;
+  PVector out = new PVector(-1, -1);
+  if (x_in >= x_min && x_in <= x_max && y_in >= y_min && y_in <= y_max) {
+    float x = map(x_in, x_min, x_max, 0.0f, c.width);
+    float y = map(y_in, y_min, y_max, 0.0f, c.height);
+    out = new PVector(x,y);
+  }
+  return out;
 }
 class Log {
   String current_log;
@@ -184,33 +186,38 @@ public String zeroFormat(int input) {
 class Viewport {
   int view_w;
   int view_h;
-  int view_size;
+  int viewport_size;
   int view_off_w = 0, view_off_h = 0;
-  int display_off_x, display_off_y;
+  int viewport_off_x, viewport_off_y;
   PGraphics bg;
 
-  Viewport(PGraphics pg, int _view_size, int dox, int doy) {
-    view_size = _view_size;
-    display_off_x = dox;
-    display_off_y = doy;
+  Viewport(PGraphics pg, int _viewport_size, int dox, int doy) {
+    viewport_size = _viewport_size;
+    viewport_off_x = dox;
+    viewport_off_y = doy;
   }
 
   public void display(PGraphics pg) {
     pushMatrix();
-    translate(display_off_x, display_off_y);
+    translate(viewport_off_x, viewport_off_y);
+    fill(100);
+    rect(0, 0, viewport_size, viewport_size);
     noStroke();
     fill(255);
     drawPointers();
-    fill(100);
 
     if (viewport_show_alpha) image(bg, view_off_w, view_off_h, view_w, view_h);
+    else {
+      fill(0);
+      rect(view_off_w, view_off_h, view_w, view_h);
+    }
     image(pg, view_off_w, view_off_h, view_w, view_h);
     popMatrix();
     //println(view_w, view_h);
   }
 
   public void resize(PGraphics pg) {
-    int[] dims = scaleToFit(pg.width, pg.height, view_size, view_size);
+    int[] dims = scaleToFit(pg.width, pg.height, viewport_size, viewport_size);
     view_off_w = dims[0];
     view_off_h = dims[1];
     view_w = dims[2];
@@ -243,24 +250,24 @@ class Viewport {
   public void drawPointers() {
     int x = view_off_w;
     int y = view_off_h;
-    //triangle(x, y, x-5, y, x, y-5);
+    triangle(x, y, x-5, y, x, y-5);
     x += bg.width;
-    //triangle(x, y, x+5, y, x, y-5);
+    triangle(x, y, x+5, y, x, y-5);
     y += bg.height;
-    //triangle(x, y, x+5, y, x, y+5);
+    triangle(x, y, x+5, y, x, y+5);
     x = view_off_w;
-    //triangle(x, y, x-5, y, x, y+5);
+    triangle(x, y, x-5, y, x, y+5);
   }
 }
 
 public void updateCanvas() {
   c = createGraphics(cw, ch, P3D);
-  view.resize(c);
+  vp.resize(c);
 }
 
 public void updateCanvas(int w, int h) {
   c = createGraphics(w, h, P3D);
-  view.resize(c);
+  vp.resize(c);
 }
 
 public int[] scaleToFill(int in_w, int in_h, int dest_w, int dest_h) {
@@ -268,8 +275,8 @@ public int[] scaleToFill(int in_w, int in_h, int dest_w, int dest_h) {
   PVector dest = new PVector((float)dest_w, (float)dest_h); //vector of destination dimensions
   /*
   calculate the scaling ratios for both axis, and choose the largest for scaling
-   the output dimensions to FILL the destination
-   */
+  the output dimensions to FILL the destination
+  */
   float scale = max(dest.x/in.x, dest.y/in.y);
   int out_w = round(in_w *scale);
   int out_h = round(in_h *scale);
@@ -285,8 +292,8 @@ public int[] scaleToFit(int in_w, int in_h, int dest_w, int dest_h) {
   PVector dest = new PVector((float)dest_w, (float)dest_h); //vector of destination dimensions
   /*
   calculate the scaling ratios for both axis, and choose the SMALLEST for scaling
-   the output dimensions to FIT the destination
-   */
+  the output dimensions to FIT the destination
+  */
   float scale = min(dest.x/in.x, dest.y/in.y);
   int out_w = round(in_w *scale);
   int out_h = round(in_h *scale);
@@ -440,8 +447,22 @@ public void controlSetup() {
   Add your own controls below. Use .setId(-1) to make controller
   unreachable by OSC.
   */
-  xoff = 10;
-  yoff = 300;
+  xoff = vp.viewport_off_x;
+  yoff = vp.viewport_off_y+vp.viewport_size+10;
+
+  knob_brush_size = cp5.addKnob("brush_size")
+  .setPosition(xoff, yoff)
+  .setSize(30, 30)
+  .setLabel("brush size")
+  .setValue(10)
+  ;
+
+  xoff += knob_brush_size.getWidth() + 10;
+  bang_clear = cp5.addBang("bang_clear")
+  .setPosition(xoff, yoff)
+  .setSize(30, 30)
+  .setLabel("clear canvas")
+  ;
 }
 
 public int evalFieldInput1(String in, int current, Controller con) {
@@ -557,6 +578,12 @@ public void field_osc_port(String theText) {
 public void button_ip() {
   updateIP();
   log.setText("ip adress has been updated to " + ip);
+}
+
+public void bang_clear() {
+  c.beginDraw();
+  c.background(0);
+  c.endDraw();
 }
 public void noteOn(int channel, int pitch, int velocity) {
   if (log_midi) log.setText("Note On // Channel:"+channel + " // Pitch:"+pitch + " // Velocity:"+velocity);

@@ -141,8 +141,22 @@ void controlSetup() {
   Add your own controls below. Use .setId(-1) to make controller
   unreachable by OSC.
   */
-  xoff = 10;
-  yoff = 300;
+  xoff = vp.viewport_off_x;
+  yoff = vp.viewport_off_y+vp.viewport_size+10;
+
+  knob_brush_size = cp5.addKnob("brush_size")
+  .setPosition(xoff, yoff)
+  .setSize(30, 30)
+  .setLabel("brush size")
+  .setValue(10)
+  ;
+
+  xoff += knob_brush_size.getWidth() + 10;
+  bang_clear = cp5.addBang("bang_clear")
+  .setPosition(xoff, yoff)
+  .setSize(30, 30)
+  .setLabel("clear canvas")
+  ;
 }
 
 int evalFieldInput1(String in, int current, Controller con) {
@@ -258,4 +272,10 @@ void field_osc_port(String theText) {
 public void button_ip() {
   updateIP();
   log.setText("ip adress has been updated to " + ip);
+}
+
+public void bang_clear() {
+  c.beginDraw();
+  c.clear();
+  c.endDraw();
 }
