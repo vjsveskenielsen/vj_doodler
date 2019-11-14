@@ -43,7 +43,8 @@ int syphon_clients_index; //current syphon client
 String syphon_name = "boilerplate", osc_address = syphon_name;
 Log log;
 
-PVector brush;
+PVector brush = new PVector(-1, -1);
+PVector pbrush = brush;
 
 void settings() {
   size(500, 500, P3D);
@@ -61,6 +62,7 @@ void setup() {
   view = new Viewport(c, 400, 50, 50);
   syphonserver = new SyphonServer(this, syphon_name);
   view.resize(c);
+  frameRate(60);
 }
 
 void draw() {
@@ -80,11 +82,36 @@ void draw() {
 
 void drawGraphics() {
   c.beginDraw();
-  c.clear();
-  c.fill(255);
-  c.noStroke();
-  brush = mapMouseToCanvas(mouseX, mouseY, c);
-  c.circle(brush.x, brush.y, 30);
+/*
+  c.loadPixels();
+  for (int i = 0; i < c.pixels.length; i++) {
+    // The functions red(), green(), and blue() pull out the 3 color components from a pixel.
+    float r = red(c.pixels[i]);
+    float g = green(c.pixels[i]);
+    float b = blue(c.pixels[i]);
+    if (r > 0) {
+      r = constrain(r-10, 0, 255);
+      g = constrain(g-10, 0, 255);
+      b = constrain(b-10, 0, 255);
+      c.pixels[i] = color(r,g,b);
+    }
+    else c.pixels[i] = color(0,0,0);
+  }
+
+  c.updatePixels();
+*/
+  //c.fill(255, 0,0, 255);
+  c.stroke(255);
+  c.strokeWeight(60);
+  if (mousePressed) {
+    brush = mapMouseToCanvas(mouseX, mouseY, c);
+    if (brush.x + brush.y != -2) {
+      c.circle(brush.x, brush.y, 30);
+
+      if (pbrush.x + pbrush.y != -2) c.line(pbrush.x, pbrush.y, brush.x, brush.y);
+      pbrush = brush;
+    }
+  }
   c.endDraw();
 }
 
@@ -93,10 +120,16 @@ PVector mapMouseToCanvas(int x_in, int y_in, PGraphics pg) {
   int x_max = x_min+view.view_w;
   int y_min = view.display_off_y+view.view_off_h;
   int y_max = y_min+view.view_h;
+  PVector out = new PVector(-1, -1);
   if (mouseX >= x_min && mouseX <= x_max &&
-      mouseY >= y_min && mouseY <= y_max) {
-    println("brush on canvas");
+    mouseY >= y_min && mouseY <= y_max) {
+      float x = map(mouseX, x_min, x_max, 0.0, c.width);
+      float y = map(mouseY, y_min, y_max, 0.0, c.height);
+      out = new PVector(x,y);
+    }
+    return out;
   }
-  else println(y_min, mouseY, y_max, "not on canvas");
-  return new PVector(0,0);
+
+void mouseReleased() {
+  pbrush = new PVector(-1, -1);
 }
