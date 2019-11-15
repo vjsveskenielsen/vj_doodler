@@ -52,8 +52,9 @@ Button button_ip;
 ScrollableList dropdown_midi, dropdown_syphon_client;
 Toggle toggle_log_osc, toggle_log_midi, toggle_view_bg;
 Knob knob_brush_size;
-Bang bang_clear;
+Bang bang_clear, bang_black, bang_white;
 float brush_size;
+int brush_color = color(0xffFFFFFF);
 Viewport vp;
 boolean viewport_show_alpha = false;
 boolean log_midi = true, log_osc = true;
@@ -61,20 +62,20 @@ boolean log_midi = true, log_osc = true;
 int port = 9999;
 String ip;
 
-PGraphics c, c_input;
+PGraphics c;
 int cw = 1280, ch = 720;
 
 SyphonServer syphonserver;
 SyphonClient[] syphon_clients;
 int syphon_clients_index; //current syphon client
-String syphon_name = "boilerplate", osc_address = syphon_name;
+String syphon_name = "vj_doodler", osc_address = syphon_name;
 Log log;
 
 PVector brush = new PVector(-1, -1);
 PVector pbrush = brush;
 
 public void settings() {
-  size(720, 840, P3D);
+  size(620, 740, P3D);
 }
 
 public void setup() {
@@ -83,8 +84,7 @@ public void setup() {
   midi_devices = midi.availableInputs();
 
   c = createGraphics(cw, ch, P3D);
-  c_input = createGraphics(c.width,c.height,P3D);
-  vp = new Viewport(c, 700, 10, 65);
+  vp = new Viewport(c, 600, 10, 65);
   syphonserver = new SyphonServer(this, syphon_name);
   vp.resize(c);
   frameRate(60);
@@ -93,10 +93,12 @@ public void setup() {
 }
 
 public void draw() {
-  background(127);
   noStroke();
+  background(127);
+
   fill(100);
   rect(0, 0, width, 55);
+
   fill(cp5.getTab("output/syphon").getColor().getBackground());
   rect(0, 0, width, cp5.getTab("output/syphon").getHeight());
 
@@ -108,9 +110,7 @@ public void draw() {
 
 public void drawGraphics() {
   c.beginDraw();
-  //c.fill(0, 10);
-  //c.noStroke();
-  //c.rect(0, 0, c.width, c.height);
+
   /*
   c.loadPixels();
   for (int i = 0; i < c.pixels.length; i++) {
@@ -133,18 +133,25 @@ if (mousePressed) {
   pbrush = mapMouseToCanvas(pmouseX, pmouseY, c);
   if (brush.x + brush.y != -2) {
     c.noStroke();
-    c.circle(brush.x, brush.y, brush_size);
+    c.fill(brush_color);
+    c.circle(brush.x, brush.y, brush_size); //buttcap each line
     if (pbrush.x + pbrush.y != -2) {
       c.strokeWeight(brush_size);
-      c.stroke(255);
+      c.stroke(brush_color);
       c.line(pbrush.x, pbrush.y, brush.x, brush.y);
     }
   }
 }
 c.endDraw();
-pbrush = new PVector(-1, -1);
+pbrush = new PVector(-1, -1); //reset pbrush
+
+//draw brush preview
+noFill();
+strokeWeight(1);
+stroke(255,0,0);
+circle(mouseX, mouseY, scaleBrushPreview(brush_size, c));
 }
-/*remaps a cursor input so that what you draw inside the canvas, is scaled
+/*remaps the cursor input so that what you draw inside the viewport, is scaled
 correctly to the PGraphics canvas */
 public PVector mapMouseToCanvas(int x_in, int y_in, PGraphics pg) {
   int x_min = vp.viewport_off_x+vp.view_off_w;
@@ -157,6 +164,13 @@ public PVector mapMouseToCanvas(int x_in, int y_in, PGraphics pg) {
     float y = map(y_in, y_min, y_max, 0.0f, c.height);
     out = new PVector(x,y);
   }
+  return out;
+}
+
+public float scaleBrushPreview(float bs, PGraphics pg) {
+  float out = bs;
+  float scale = max(c.width, c.height)/max(width, height);
+  out = scale * brush_size/2;
   return out;
 }
 class Log {
@@ -200,7 +214,8 @@ class Viewport {
   public void display(PGraphics pg) {
     pushMatrix();
     translate(viewport_off_x, viewport_off_y);
-    fill(100);
+    noFill();
+    stroke(100);
     rect(0, 0, viewport_size, viewport_size);
     noStroke();
     fill(255);
@@ -266,6 +281,7 @@ public void updateCanvas() {
 }
 
 public void updateCanvas(int w, int h) {
+  c = createGraphics(w, h, P3D);
   c = createGraphics(w, h, P3D);
   vp.resize(c);
 }
@@ -463,6 +479,24 @@ public void controlSetup() {
   .setSize(30, 30)
   .setLabel("clear canvas")
   ;
+
+  xoff += bang_clear.getWidth() + 30;
+  bang_black = cp5.addBang("bang_black")
+  .setPosition(xoff, yoff)
+  .setSize(30, 30)
+  .setLabel("black")
+  .setColorForeground(color(0xff000000))
+  .setColorActive(color(0xff323232))
+  ;
+
+  xoff += bang_clear.getWidth() + 10;
+  bang_white = cp5.addBang("bang_white")
+  .setPosition(xoff, yoff)
+  .setSize(30, 30)
+  .setLabel("white")
+  .setColorForeground(color(0xffFFFFFF))
+  .setColorActive(color(0xffe5e5e5))
+  ;
 }
 
 public int evalFieldInput1(String in, int current, Controller con) {
@@ -582,8 +616,16 @@ public void button_ip() {
 
 public void bang_clear() {
   c.beginDraw();
-  c.background(0);
+  c.clear();
   c.endDraw();
+}
+
+public void bang_black() {
+  brush_color = color(0xff000000);
+}
+
+public void bang_white() {
+  brush_color = color(0xffFFFFFF);
 }
 public void noteOn(int channel, int pitch, int velocity) {
   if (log_midi) log.setText("Note On // Channel:"+channel + " // Pitch:"+pitch + " // Velocity:"+velocity);

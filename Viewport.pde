@@ -15,7 +15,8 @@ class Viewport {
   void display(PGraphics pg) {
     pushMatrix();
     translate(viewport_off_x, viewport_off_y);
-    fill(100);
+    noFill();
+    stroke(100);
     rect(0, 0, viewport_size, viewport_size);
     noStroke();
     fill(255);
@@ -81,6 +82,7 @@ void updateCanvas() {
 }
 
 void updateCanvas(int w, int h) {
+  c = createGraphics(w, h, P3D);
   c = createGraphics(w, h, P3D);
   vp.resize(c);
 }

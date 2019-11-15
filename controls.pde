@@ -157,6 +157,24 @@ void controlSetup() {
   .setSize(30, 30)
   .setLabel("clear canvas")
   ;
+
+  xoff += bang_clear.getWidth() + 30;
+  bang_black = cp5.addBang("bang_black")
+  .setPosition(xoff, yoff)
+  .setSize(30, 30)
+  .setLabel("black")
+  .setColorForeground(color(#000000))
+  .setColorActive(color(#323232))
+  ;
+
+  xoff += bang_clear.getWidth() + 10;
+  bang_white = cp5.addBang("bang_white")
+  .setPosition(xoff, yoff)
+  .setSize(30, 30)
+  .setLabel("white")
+  .setColorForeground(color(#FFFFFF))
+  .setColorActive(color(#e5e5e5))
+  ;
 }
 
 int evalFieldInput1(String in, int current, Controller con) {
@@ -278,4 +296,12 @@ public void bang_clear() {
   c.beginDraw();
   c.clear();
   c.endDraw();
+}
+
+public void bang_black() {
+  brush_color = color(#000000);
+}
+
+public void bang_white() {
+  brush_color = color(#FFFFFF);
 }
